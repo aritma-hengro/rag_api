@@ -12,19 +12,22 @@ def get_vector_store(
     embeddings: Embeddings,
     collection_name: str,
     mode: str = "sync",
-    search_index: Optional[str] = None
+    search_index: Optional[str] = None,
+    create_extension: Optional[bool] = true
 ):
     if mode == "sync":
         return ExtendedPgVector(
             connection_string=connection_string,
             embedding_function=embeddings,
             collection_name=collection_name,
+            create_extension=create_extension
         )
     elif mode == "async":
         return AsyncPgVector(
             connection_string=connection_string,
             embedding_function=embeddings,
             collection_name=collection_name,
+            create_extension=create_extension
         )
     elif mode == "atlas-mongo":
         mongo_db = MongoClient(connection_string).get_database()

@@ -51,6 +51,9 @@ if not os.path.exists(RAG_UPLOAD_DIR):
 VECTOR_DB_TYPE = VectorDBType(
     get_env_variable("VECTOR_DB_TYPE", VectorDBType.PGVECTOR.value)
 )
+PGVECTOR_CREATE_EXTENSION = (
+    get_env_variable("PGVECTOR_CREATE_EXTENSION", "True").lower() == "true"
+)
 POSTGRES_USE_UNIX_SOCKET = (
     get_env_variable("POSTGRES_USE_UNIX_SOCKET", "False").lower() == "true"
 )
@@ -313,6 +316,7 @@ if VECTOR_DB_TYPE == VectorDBType.PGVECTOR:
         embeddings=embeddings,
         collection_name=COLLECTION_NAME,
         mode="async",
+        create_extension=PGVECTOR_CREATE_EXTENSION,
     )
 elif VECTOR_DB_TYPE == VectorDBType.ATLAS_MONGO:
     # Backward compatability check
