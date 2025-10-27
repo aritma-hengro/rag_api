@@ -48,6 +48,7 @@ The following environment variables are required to run the application:
 - `POSTGRES_DB`: (Optional) The name of the PostgreSQL database, used when `VECTOR_DB_TYPE=pgvector`.
 - `POSTGRES_USER`: (Optional) The username for connecting to the PostgreSQL database.
 - `POSTGRES_PASSWORD`: (Optional) The password for connecting to the PostgreSQL database.
+- `PGVECTOR_CREATE_EXTENSION`: (Optional) Allows bypassing CREATE EXTENSION vector; on database by setting to `false`. Defaults to `true`.
 - `DB_HOST`: (Optional) The hostname or IP address of the PostgreSQL database server.
 - `DB_PORT`: (Optional) The port number of the PostgreSQL database server.
 - `RAG_HOST`: (Optional) The hostname or IP address where the API server will run. Defaults to "0.0.0.0"

@@ -13,7 +13,7 @@ def get_vector_store(
     collection_name: str,
     mode: str = "sync",
     search_index: Optional[str] = None,
-    create_extension: Optional[bool] = true
+    create_extension: Optional[bool] = True
 ):
     if mode == "sync":
         return ExtendedPgVector(
