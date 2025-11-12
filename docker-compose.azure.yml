@@ -10,8 +10,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Force Azure PGVector usage
-      - FORCE_AZURE_PGVECTOR=true
+      # Disable automatic extension creation (Azure requires pre-existing extensions)
       - PGVECTOR_CREATE_EXTENSION=false
 
       # Azure PostgreSQL connection (use your actual values)

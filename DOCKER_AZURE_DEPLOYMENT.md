@@ -15,9 +15,8 @@ The Azure-specific Docker setup includes:
 
 - ✓ Python 3.10-slim base image (smaller footprint)
 - ✓ Only Azure PostgreSQL dependencies installed
-- ✓ `FORCE_AZURE_PGVECTOR=true` set by default
+- ✓ Conditional imports automatically use Azure PGVector when installed
 - ✓ Optimized for Azure PostgreSQL Flexible Server
-- ✓ Health checks configured
 - ✓ No unnecessary dependencies (unstructured, MongoDB, etc.)
 
 ---
@@ -127,7 +126,6 @@ From `requirements-azure-core.txt`:
 
 **Set in Dockerfile:**
 ```dockerfile
-ENV FORCE_AZURE_PGVECTOR=true
 ENV PGVECTOR_CREATE_EXTENSION=false
 ENV SCARF_NO_ANALYTICS=true
 ```
@@ -189,7 +187,6 @@ az container create \
   --dns-name-label rag-api-unique \
   --ports 8000 \
   --environment-variables \
-    FORCE_AZURE_PGVECTOR=true \
     PGVECTOR_CREATE_EXTENSION=false \
   --secure-environment-variables \
     AZURE_POSTGRESQL_DSN='<connection-string>' \
@@ -220,7 +217,6 @@ az containerapp create \
   --cpu 2 \
   --memory 4Gi \
   --env-vars \
-    FORCE_AZURE_PGVECTOR=true \
     PGVECTOR_CREATE_EXTENSION=false \
   --secrets \
     db-connection-string='<connection-string>' \
@@ -251,8 +247,6 @@ spec:
         ports:
         - containerPort: 8000
         env:
-        - name: FORCE_AZURE_PGVECTOR
-          value: "true"
         - name: PGVECTOR_CREATE_EXTENSION
           value: "false"
         - name: AZURE_POSTGRESQL_DSN
@@ -588,7 +582,6 @@ logger.addHandler(AzureLogHandler(
 - **Compose File**: [docker-compose.azure.yml](docker-compose.azure.yml)
 - **Environment Template**: [.env.azure.example](.env.azure.example)
 - **Installation Guide**: [AZURE_INSTALLATION_SUCCESS.md](AZURE_INSTALLATION_SUCCESS.md)
-- **Factory Configuration**: [FORCE_AZURE_PGVECTOR.md](FORCE_AZURE_PGVECTOR.md)
 
 ---
 

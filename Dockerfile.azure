@@ -19,10 +19,6 @@ COPY requirements-azure-core.txt .
 # Install Python dependencies with no cache to reduce image size
 RUN pip install --no-cache-dir -r requirements-azure-core.txt
 
-# Set environment variables for Azure PostgreSQL
-# Force the use of Azure PGVector regardless of configuration
-ENV FORCE_AZURE_PGVECTOR=true
-
 # Disable extension creation - Azure PostgreSQL requires pre-existing extensions
 ENV PGVECTOR_CREATE_EXTENSION=false
 
