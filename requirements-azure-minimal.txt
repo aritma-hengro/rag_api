@@ -1,0 +1,63 @@
+# Minimal requirements for Azure PostgreSQL Vector Store focus
+# This file resolves dependency conflicts by removing incompatible packages
+# Pinned versions to avoid pip backtracking
+
+# Core LangChain with Azure PostgreSQL
+langchain==0.3.27
+langchain-azure-postgresql==0.3.0
+langchain-core==0.3.79
+
+# Embedding providers (pinned to avoid backtracking)
+langchain-openai==0.3.10
+# langchain-aws removed - requires numpy<2, conflicts with Azure PostgreSQL
+langchain-google-vertexai==3.0.3
+langchain-google-genai==3.0.2
+
+# Text processing
+langchain_text_splitters
+
+# Web framework
+fastapi==0.115.12
+uvicorn==0.28.0
+python-multipart==0.0.19
+
+# Database
+sqlalchemy==2.0.41
+psycopg2-binary==2.9.9  # Keep for backward compatibility
+pgvector  # Installed by azure-postgresql
+asyncpg  # For async database operations
+
+# Document processing (numpy 2 compatible)
+pypdf==6.0.0
+python-pptx==1.0.2
+docx2txt==0.9
+xlrd==2.0.2
+openpyxl==3.1.5
+markdown==3.8.2
+
+# Data processing (numpy 2 compatible)
+pandas>=2.2.3
+networkx==3.2.1
+
+# Utilities
+python-dotenv==1.1.1
+aiofiles==24.1.0
+PyJWT==2.8.0
+cryptography==45.0.5
+pydantic==2.10.6
+chardet==5.2.0
+boto3==1.40.19
+python-magic==0.4.27
+pypandoc==1.15
+
+# ML/Embeddings
+sentence_transformers==3.1.1
+langchain-huggingface==0.1.0
+langchain-ollama==0.3.3
+
+# Removed due to numpy<2 requirement:
+# - langchain-mongodb (numpy<2)
+# - rapidocr-onnxruntime (causes opencv conflicts)
+# - opencv-python-headless (numpy version conflicts)
+# - unstructured (complex dependencies)
+# - pymongo (not needed for Azure focus)

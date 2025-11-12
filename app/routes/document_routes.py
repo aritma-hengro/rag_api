@@ -18,7 +18,7 @@ from fastapi import (
     status,
 )
 from langchain_core.documents import Document
-from langchain_core.runnables import run_in_executor
+from langchain_core.runnables.config import run_in_executor
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from functools import lru_cache
 

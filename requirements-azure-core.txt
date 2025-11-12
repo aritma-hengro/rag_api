@@ -1,0 +1,57 @@
+# Ultra-minimal requirements for Azure PostgreSQL Vector Store ONLY
+# This is the absolute minimum to get Azure PostgreSQL working
+# Add other embedding providers ONLY if they are compatible with langchain-core 0.3.x
+
+# Core LangChain with Azure PostgreSQL
+langchain-azure-postgresql==0.3.0
+langchain-core==0.3.79
+
+# Minimal embedding provider compatible with core 0.3.x
+langchain-openai==0.3.10
+
+# Text processing
+langchain_text_splitters==0.3.11
+
+# Web framework
+fastapi==0.115.12
+uvicorn==0.28.0
+python-multipart==0.0.19
+
+# Database
+sqlalchemy==2.0.41
+psycopg2-binary==2.9.9
+asyncpg==0.30.0
+
+# Document processing (numpy 2 compatible)
+pypdf==6.0.0
+python-pptx==1.0.2
+docx2txt==0.9
+xlrd==2.0.2
+openpyxl==3.1.5
+markdown==3.8.2
+
+# Data processing (numpy 2 compatible)
+pandas>=2.2.3
+
+# Utilities
+python-dotenv==1.1.1
+aiofiles==24.1.0
+PyJWT==2.8.0
+cryptography==45.0.5
+pydantic==2.10.6
+chardet==5.2.0
+
+# ML/Embeddings
+sentence_transformers==3.1.1
+langchain-huggingface==0.1.0
+langchain-ollama==0.3.3
+
+# NOTE: The following packages are REMOVED due to incompatibility:
+# - langchain-aws (requires numpy<2)
+# - langchain-google-vertexai (requires langchain-core>=1.0.0)
+# - langchain-google-genai (requires langchain-core>=1.0.0)
+# - langchain-mongodb (requires numpy<2)
+# - boto3 (not needed unless using AWS)
+# - networkx (not essential)
+# - python-magic (not essential)
+# - pypandoc (not essential)

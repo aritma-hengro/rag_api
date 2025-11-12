@@ -17,6 +17,7 @@ load_dotenv(find_dotenv())
 class VectorDBType(Enum):
     PGVECTOR = "pgvector"
     ATLAS_MONGO = "atlas-mongo"
+    AZURE_PGVECTOR = "azure-pgvector"
 
 
 class EmbeddingsProvider(Enum):

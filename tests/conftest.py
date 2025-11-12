@@ -12,10 +12,10 @@ os.environ["DSN"] = "dummy://"
 # -- Patch the vector store classes to bypass DB connection --
 
 # Do this *before* importing any app modules.
-from langchain_community.vectorstores.pgvector import PGVector
+from langchain_postgres import PGVector
 
 def dummy_post_init(self):
-    # Skip extension creation
+    # Skip extension creation and database connection
     pass
 
 AsyncPgVector.__post_init__ = dummy_post_init
