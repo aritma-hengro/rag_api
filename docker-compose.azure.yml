@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # RAG API service using Azure-specific image
+  rag-api-azure:
+    build:
+      context: .
+      dockerfile: Dockerfile.azure
+    container_name: rag-api-azure
+    ports:
+      - "8000:8000"
+    environment:
+      # Force Azure PGVector usage
+      - FORCE_AZURE_PGVECTOR=true
+      - PGVECTOR_CREATE_EXTENSION=false
+
+      # Azure PostgreSQL connection (use your actual values)
+      # Option 1: Full connection string
+      - DSN=${AZURE_POSTGRESQL_DSN:-postgresql://user:password@host.postgres.database.azure.com:5432/dbname?sslmode=require}
+
+      # Option 2: Individual components (if DSN not provided)
+      - DB_HOST=${AZURE_DB_HOST:-your-server.postgres.database.azure.com}
+      - DB_PORT=${AZURE_DB_PORT:-5432}
+      - DB_NAME=${AZURE_DB_NAME:-rag_db}
+      - DB_USER=${AZURE_DB_USER:-your_username}
+      - DB_PASSWORD=${AZURE_DB_PASSWORD}
+
+      # OpenAI API Key (or other embedding provider)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+      # Optional: Azure OpenAI configuration
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+
+      # Application settings
+      - TESTING=false
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  default:
+    name: rag-azure-network

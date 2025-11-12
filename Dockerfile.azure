@@ -1,0 +1,35 @@
+# Azure PostgreSQL optimized Docker image
+# Uses Python 3.10-slim for smaller image size and focuses on Azure-specific dependencies
+FROM python:3.10-slim AS azure
+
+WORKDIR /app
+
+# Install only essential system dependencies for Azure deployment
+# - pandoc: Document conversion
+# - netcat-openbsd: Health check utilities
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    pandoc \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Azure-specific requirements
+COPY requirements-azure-core.txt .
+
+# Install Python dependencies with no cache to reduce image size
+RUN pip install --no-cache-dir -r requirements-azure-core.txt
+
+# Set environment variables for Azure PostgreSQL
+# Force the use of Azure PGVector regardless of configuration
+ENV FORCE_AZURE_PGVECTOR=true
+
+# Disable extension creation - Azure PostgreSQL requires pre-existing extensions
+ENV PGVECTOR_CREATE_EXTENSION=false
+
+# Disable analytics/telemetry
+ENV SCARF_NO_ANALYTICS=true
+
+# Copy application code
+COPY . .
+
+CMD ["python", "main.py"]
