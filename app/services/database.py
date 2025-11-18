@@ -1,6 +1,6 @@
 # app/services/database.py
 import asyncpg
-from app.config import DSN, logger
+from app.config import DSN, logger, USE_ENTRA_AUTH
 
 
 class PSQLDatabase:
@@ -9,7 +9,14 @@ class PSQLDatabase:
     @classmethod
     async def get_pool(cls):
         if cls.pool is None:
-            cls.pool = await asyncpg.create_pool(dsn=DSN)
+            # Azure PostgreSQL requires SSL
+            # When using Entra Auth, we know we're connecting to Azure
+            if USE_ENTRA_AUTH or 'database.azure.com' in DSN:
+                # Use 'require' SSL mode for Azure PostgreSQL
+                cls.pool = await asyncpg.create_pool(dsn=DSN, ssl='require')
+                logger.info("Created asyncpg pool with SSL required")
+            else:
+                cls.pool = await asyncpg.create_pool(dsn=DSN)
         return cls.pool
 
     @classmethod
