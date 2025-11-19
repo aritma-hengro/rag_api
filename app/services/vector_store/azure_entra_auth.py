@@ -123,9 +123,11 @@ class EntraIDAuthHelper:
             logger.warning(f"Could not extract username from token, using: {username}")
 
         # Encode components for URL
-        encoded_username = urllib.parse.quote_plus(username)
-        encoded_password = urllib.parse.quote_plus(token)
-        encoded_database = urllib.parse.quote_plus(database)
+        # Use quote() instead of quote_plus() for URI components (not query params)
+        # This encodes spaces as %20 instead of +
+        encoded_username = urllib.parse.quote(username, safe='')
+        encoded_password = urllib.parse.quote(token, safe='')
+        encoded_database = urllib.parse.quote(database, safe='')
 
         # Build connection string
         if use_psycopg2:

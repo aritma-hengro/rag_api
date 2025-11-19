@@ -97,9 +97,10 @@ elif USE_ENTRA_AUTH:
 
         # Build asyncpg DSN with token as password
         # Note: SSL must be passed as a parameter to create_pool(), not in the DSN
-        encoded_username = urllib.parse.quote_plus(username)
-        encoded_password = urllib.parse.quote_plus(token)
-        DSN = f"postgresql://{encoded_username}:{encoded_password}@{DB_HOST}:{DB_PORT}/{urllib.parse.quote_plus(POSTGRES_DB)}"
+        # Use quote() instead of quote_plus() for URI components (spaces become %20 not +)
+        encoded_username = urllib.parse.quote(username, safe='')
+        encoded_password = urllib.parse.quote(token, safe='')
+        DSN = f"postgresql://{encoded_username}:{encoded_password}@{DB_HOST}:{DB_PORT}/{urllib.parse.quote(POSTGRES_DB, safe='')}"
         print("INFO: Using Azure Entra ID authentication for asyncpg connection")
     except Exception as e:
         print(f"ERROR: Failed to initialize Entra ID auth for asyncpg: {e}")
