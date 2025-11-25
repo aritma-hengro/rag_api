@@ -64,6 +64,9 @@ ATLAS_MONGO_DB_URI = get_env_variable(
     "ATLAS_MONGO_DB_URI", "mongodb://127.0.0.1:27018/LibreChat"
 )
 ATLAS_SEARCH_INDEX = get_env_variable("ATLAS_SEARCH_INDEX", "vector_index")
+USE_ENTRA_AUTH = (
+    get_env_variable("USE_ENTRA_AUTH", "False").lower() == "true"
+)
 MONGO_VECTOR_COLLECTION = get_env_variable(
     "MONGO_VECTOR_COLLECTION", None
 )  # Deprecated, backwards compatability
@@ -75,11 +78,42 @@ PDF_EXTRACT_IMAGES = True if env_value == "true" else False
 
 if POSTGRES_USE_UNIX_SOCKET:
     connection_suffix = f"{urllib.parse.quote_plus(POSTGRES_USER)}:{urllib.parse.quote_plus(POSTGRES_PASSWORD)}@/{urllib.parse.quote_plus(POSTGRES_DB)}?host={urllib.parse.quote_plus(DB_HOST)}"
+    CONNECTION_STRING = f"postgresql+psycopg2://{connection_suffix}"
+    DSN = f"postgresql://{connection_suffix}"
+elif USE_ENTRA_AUTH:
+    # For SQLAlchemy connection (will be modified by azure_entra_auth helper)
+    connection_suffix = f"{DB_HOST}:{DB_PORT}/{urllib.parse.quote_plus(POSTGRES_DB)}"
+    CONNECTION_STRING = f"postgresql+psycopg2://{connection_suffix}"
+
+    # For asyncpg DSN, we need to get the token
+    from app.services.vector_store.azure_entra_auth import EntraIDAuthHelper
+    try:
+        auth_helper = EntraIDAuthHelper()
+        token = auth_helper.get_access_token()
+        username = auth_helper.get_username_from_token()
+        if not username:
+            username = "entra_user"
+            print(f"WARNING: Could not extract username from token, using: {username}")
+
+        # Build asyncpg DSN with token as password
+        # Note: SSL must be passed as a parameter to create_pool(), not in the DSN
+        # Use quote() instead of quote_plus() for URI components (spaces become %20 not +)
+        encoded_username = urllib.parse.quote(username, safe='')
+        encoded_password = urllib.parse.quote(token, safe='')
+        DSN = f"postgresql://{encoded_username}:{encoded_password}@{DB_HOST}:{DB_PORT}/{urllib.parse.quote(POSTGRES_DB, safe='')}"
+        print("INFO: Using Azure Entra ID authentication for asyncpg connection")
+    except Exception as e:
+        print(f"ERROR: Failed to initialize Entra ID auth for asyncpg: {e}")
+        print("WARNING: Falling back to username/password authentication")
+        connection_suffix = f"{urllib.parse.quote_plus(POSTGRES_USER)}:{urllib.parse.quote_plus(POSTGRES_PASSWORD)}@{DB_HOST}:{DB_PORT}/{urllib.parse.quote_plus(POSTGRES_DB)}"
+        DSN = f"postgresql://{connection_suffix}"
 else:
     connection_suffix = f"{urllib.parse.quote_plus(POSTGRES_USER)}:{urllib.parse.quote_plus(POSTGRES_PASSWORD)}@{DB_HOST}:{DB_PORT}/{urllib.parse.quote_plus(POSTGRES_DB)}"
+    CONNECTION_STRING = f"postgresql+psycopg2://{connection_suffix}"
+    DSN = f"postgresql://{connection_suffix}"
 
-CONNECTION_STRING = f"postgresql+psycopg2://{connection_suffix}"
-DSN = f"postgresql://{connection_suffix}"
+print(f"CONNECTION_STRING: {CONNECTION_STRING}")
+print(f"DSN (asyncpg): postgresql://<credentials>@{DB_HOST}:{DB_PORT}/{POSTGRES_DB}")
 
 ## Logging
 
@@ -312,6 +346,7 @@ if VECTOR_DB_TYPE == VectorDBType.PGVECTOR:
         connection_string=CONNECTION_STRING,
         embeddings=embeddings,
         collection_name=COLLECTION_NAME,
+        create_extension=False,
         mode="async",
     )
 elif VECTOR_DB_TYPE == VectorDBType.ATLAS_MONGO:
