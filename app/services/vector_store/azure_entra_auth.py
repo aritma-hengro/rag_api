@@ -50,10 +50,17 @@ class EntraIDAuthHelper:
         Returns:
             Access token string
         """
-        logger.debug("Requesting access token for Azure PostgreSQL")
-        token = self.credential.get_token(self.POSTGRES_SCOPE)
-        self._cached_token = token.token
-        return token.token
+        logger.info("ENTRA AUTH: Requesting access token for Azure PostgreSQL")
+        logger.debug(f"ENTRA AUTH: Using scope: {self.POSTGRES_SCOPE}")
+        try:
+            token = self.credential.get_token(self.POSTGRES_SCOPE)
+            self._cached_token = token.token
+            logger.info(f"ENTRA AUTH: Successfully obtained token (length: {len(token.token)} chars)")
+            logger.debug(f"ENTRA AUTH: Token expires at: {token.expires_on}")
+            return token.token
+        except Exception as e:
+            logger.error(f"ENTRA AUTH: Failed to obtain access token: {e}")
+            raise
 
     def get_username_from_token(self) -> Optional[str]:
         """
@@ -67,11 +74,14 @@ class EntraIDAuthHelper:
         """
         # Check for explicit username override
         override_username = os.getenv("AZURE_PG_USERNAME_OVERRIDE")
+        logger.debug(f"ENTRA AUTH: Checking AZURE_PG_USERNAME_OVERRIDE env var: {override_username if override_username else 'NOT SET'}")
+
         if override_username:
-            logger.debug(f"Using overridden username: {override_username}")
+            logger.info(f"ENTRA AUTH: Using overridden username from environment: {override_username}")
             return override_username
 
         # Try to decode token to get username
+        logger.debug("ENTRA AUTH: No username override, attempting to extract from token")
         if self._cached_token:
             try:
                 import jwt
@@ -79,19 +89,25 @@ class EntraIDAuthHelper:
                     self._cached_token,
                     options={"verify_signature": False}
                 )
+                logger.debug(f"ENTRA AUTH: Token claims: {list(decoded.keys())}")
+
                 # Try different username fields in order of preference
                 username = (
                     decoded.get("upn") or
                     decoded.get("unique_name") or
                     decoded.get("email") or
-                    decoded.get("preferred_username")
+                    decoded.get("preferred_username") or
+                    decoded.get("sub")
                 )
                 if username:
-                    logger.debug(f"Extracted username from token: {username}")
+                    logger.info(f"ENTRA AUTH: Extracted username from token: {username}")
                     return username
+                else:
+                    logger.warning(f"ENTRA AUTH: Could not find username in token claims. Available claims: {list(decoded.keys())}")
             except Exception as e:
-                logger.warning(f"Failed to decode token for username: {e}")
+                logger.error(f"ENTRA AUTH: Failed to decode token for username: {e}")
 
+        logger.warning("ENTRA AUTH: No cached token available for username extraction")
         return None
 
     def create_entra_connection_string(
@@ -113,6 +129,9 @@ class EntraIDAuthHelper:
         Returns:
             Connection string with token-based authentication
         """
+        logger.info(f"ENTRA AUTH: Creating connection string for {host}:{port}/{database}")
+        logger.debug(f"ENTRA AUTH: use_psycopg2={use_psycopg2}")
+
         # Get fresh token
         token = self.get_access_token()
         username = self.get_username_from_token()
@@ -120,7 +139,9 @@ class EntraIDAuthHelper:
         if not username:
             # Fallback to generic username if extraction fails
             username = "entra_user"
-            logger.warning(f"Could not extract username from token, using: {username}")
+            logger.warning(f"ENTRA AUTH: Could not extract username from token, using fallback: {username}")
+
+        logger.info(f"ENTRA AUTH: Building connection string with username: {username}")
 
         # Encode components for URL
         # Use quote() instead of quote_plus() for URI components (not query params)
@@ -128,6 +149,9 @@ class EntraIDAuthHelper:
         encoded_username = urllib.parse.quote(username, safe='')
         encoded_password = urllib.parse.quote(token, safe='')
         encoded_database = urllib.parse.quote(database, safe='')
+
+        logger.debug(f"ENTRA AUTH: Encoded username: {encoded_username}")
+        logger.debug(f"ENTRA AUTH: Token length after encoding: {len(encoded_password)} chars")
 
         # Build connection string
         if use_psycopg2:
@@ -141,7 +165,8 @@ class EntraIDAuthHelper:
             f"?sslmode=require"
         )
 
-        logger.info(f"Created Entra ID connection string for {host}/{database}")
+        logger.info(f"ENTRA AUTH: Successfully created connection string for {host}/{database} with username {username}")
+        logger.debug(f"ENTRA AUTH: Connection string pattern: {driver}://{username}:***@{host}:{port}/{database}?sslmode=require")
         return conn_string
 
 
@@ -169,15 +194,23 @@ def get_entra_connection_string_if_enabled(
     Returns:
         Modified connection string if Entra ID is enabled, otherwise original
     """
+    logger.debug(f"ENTRA AUTH: get_entra_connection_string_if_enabled called")
+    logger.debug(f"ENTRA AUTH: Original connection string pattern: {connection_string.split('://')[0]}://***")
+    logger.debug(f"ENTRA AUTH: use_psycopg2={use_psycopg2}")
+
     if not should_use_entra_auth():
+        logger.debug("ENTRA AUTH: Entra auth not enabled, returning original connection string")
         return connection_string
+
+    logger.info("ENTRA AUTH: Entra auth is enabled, creating authenticated connection string")
 
     try:
         # Parse the original connection string to extract host and database
         parsed = urllib.parse.urlparse(connection_string)
+        logger.debug(f"ENTRA AUTH: Parsed hostname: {parsed.hostname}, port: {parsed.port}, path: {parsed.path}")
 
         if not parsed.hostname:
-            logger.error("Could not parse hostname from connection string")
+            logger.error("ENTRA AUTH: Could not parse hostname from connection string")
             return connection_string
 
         # Extract database name (remove leading slash)
@@ -186,16 +219,21 @@ def get_entra_connection_string_if_enabled(
         # Get port or use default
         port = str(parsed.port) if parsed.port else "5432"
 
+        logger.debug(f"ENTRA AUTH: Extracted - host: {parsed.hostname}, port: {port}, database: {database}")
+
         # Create Entra ID connection string
+        logger.info("ENTRA AUTH: Creating EntraIDAuthHelper instance")
         auth_helper = EntraIDAuthHelper()
-        return auth_helper.create_entra_connection_string(
+        new_conn_string = auth_helper.create_entra_connection_string(
             host=parsed.hostname,
             database=database,
             port=port,
             use_psycopg2=use_psycopg2
         )
+        logger.info("ENTRA AUTH: Successfully replaced connection string with Entra ID authenticated version")
+        return new_conn_string
 
     except Exception as e:
-        logger.error(f"Failed to create Entra ID connection string: {e}")
-        logger.warning("Falling back to original connection string")
+        logger.error(f"ENTRA AUTH: Failed to create Entra ID connection string: {e}", exc_info=True)
+        logger.warning("ENTRA AUTH: Falling back to original connection string")
         return connection_string
