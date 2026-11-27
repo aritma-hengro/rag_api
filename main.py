@@ -42,7 +42,41 @@ async def lifespan(app: FastAPI):
 
     if VECTOR_DB_TYPE == VectorDBType.PGVECTOR:
         await PSQLDatabase.get_pool()  # Initialize the pool
-        await ensure_vector_indexes()
+
+        try:
+            await ensure_vector_indexes()
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Failed to ensure vector indexes: {error_msg}")
+
+            if "InsufficientPrivilegeError" in str(type(e).__name__) or "must be owner" in error_msg.lower():
+                logger.error("=" * 80)
+                logger.error("DATABASE PERMISSIONS ERROR")
+                logger.error("=" * 80)
+                logger.error("")
+                logger.error("The database user does not have sufficient privileges to create indexes.")
+                logger.error("")
+                logger.error("SOLUTIONS:")
+                logger.error("")
+                logger.error("Option 1: Grant ownership of the table to your database user")
+                logger.error("  Connect as a database admin and run:")
+                logger.error(f"  ALTER TABLE langchain_pg_embedding OWNER TO \"your-username\";")
+                logger.error("")
+                logger.error("Option 2: Grant specific privileges")
+                logger.error("  GRANT ALL PRIVILEGES ON TABLE langchain_pg_embedding TO \"your-username\";")
+                logger.error("")
+                logger.error("Option 3: Create the indexes manually as a superuser")
+                logger.error("  CREATE INDEX IF NOT EXISTS idx_langchain_pg_embedding_custom_id")
+                logger.error("    ON langchain_pg_embedding (custom_id);")
+                logger.error("  CREATE INDEX IF NOT EXISTS idx_langchain_pg_embedding_file_id")
+                logger.error("    ON langchain_pg_embedding ((cmetadata->>'file_id'));")
+                logger.error("")
+                logger.error("After fixing permissions, restart the application.")
+                logger.error("=" * 80)
+
+            # Exit the application - don't start with insufficient permissions
+            import sys
+            sys.exit(1)
 
     yield
 

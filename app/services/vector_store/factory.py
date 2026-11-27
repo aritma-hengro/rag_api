@@ -6,12 +6,12 @@ from .async_pg_vector import AsyncPgVector
 from .atlas_mongo_vector import AtlasMongoVector
 from .extended_pg_vector import ExtendedPgVector
 
-
 def get_vector_store(
     connection_string: str,
     embeddings: Embeddings,
     collection_name: str,
     mode: str = "sync",
+    create_extension: bool = True,
     search_index: Optional[str] = None
 ):
     if mode == "sync":
@@ -19,12 +19,14 @@ def get_vector_store(
             connection_string=connection_string,
             embedding_function=embeddings,
             collection_name=collection_name,
+            create_extension=create_extension,
         )
     elif mode == "async":
         return AsyncPgVector(
             connection_string=connection_string,
             embedding_function=embeddings,
             collection_name=collection_name,
+            create_extension=create_extension,
         )
     elif mode == "atlas-mongo":
         mongo_db = MongoClient(connection_string).get_database()

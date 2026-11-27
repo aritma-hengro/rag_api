@@ -8,12 +8,23 @@ from sqlalchemy.orm import Session
 from sqlalchemy.engine import Engine
 from langchain_core.documents import Document
 from langchain_community.vectorstores.pgvector import PGVector
+from .azure_entra_auth import get_entra_connection_string_if_enabled
 
 
 class ExtendedPgVector(PGVector):
     _query_logging_setup = False
 
     def __init__(self, *args, **kwargs):
+        # Apply Entra ID authentication if enabled
+        if 'connection_string' in kwargs:
+            original_conn_str = kwargs['connection_string']
+            kwargs['connection_string'] = get_entra_connection_string_if_enabled(
+                original_conn_str,
+                use_psycopg2=True
+            )
+            if kwargs['connection_string'] != original_conn_str:
+                logging.getLogger(__name__).info("Using Azure Entra ID authentication")
+
         super().__init__(*args, **kwargs)
         self.setup_query_logging()
 

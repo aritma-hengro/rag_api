@@ -50,6 +50,8 @@ The following environment variables are required to run the application:
 - `POSTGRES_PASSWORD`: (Optional) The password for connecting to the PostgreSQL database.
 - `DB_HOST`: (Optional) The hostname or IP address of the PostgreSQL database server.
 - `DB_PORT`: (Optional) The port number of the PostgreSQL database server.
+- `USE_ENTRA_AUTH`: (Optional) Set to "true" to enable Azure Entra ID (Azure AD) authentication for PostgreSQL instead of username/password. Requires `azure-identity` package.
+- `AZURE_PG_USERNAME_OVERRIDE`: (Optional) Override the username extracted from the Entra ID token. Useful when the token username doesn't match the PostgreSQL user.
 - `RAG_HOST`: (Optional) The hostname or IP address where the API server will run. Defaults to "0.0.0.0"
 - `RAG_PORT`: (Optional) The port number where the API server will run. Defaults to port 8000.
 - `JWT_SECRET`: (Optional) The secret key used for verifying JWT tokens for requests.
@@ -166,6 +168,59 @@ In order to setup RDS Postgres with RAG API, you can follow these steps:
 Notes:
   * Even though you're logging with a Master user, it doesn't have all the super user privileges, that's why we cannot use the command: ```create role x with superuser;```
   * If you do not enable the extension, rag_api service will throw an error that it cannot create the extension due to the note above.
+
+#### Azure PostgreSQL with Entra ID Authentication:
+
+Azure PostgreSQL Flexible Server supports authentication using Azure Entra ID (formerly Azure AD) instead of traditional username/password credentials. This provides enhanced security through managed identities and token-based authentication.
+
+**Prerequisites:**
+* Azure PostgreSQL Flexible Server with pgvector extension enabled
+* Azure identity configured (Managed Identity, Azure CLI, or other DefaultAzureCredential sources)
+* Install the `azure-identity` package (included in requirements.txt)
+
+**Setup Steps:**
+
+1. **Enable pgvector extension in Azure Portal:**
+   - Navigate to: Azure Portal → Your PostgreSQL Server → Server parameters
+   - Find `azure.extensions` and add `vector` to the allowed list
+   - Restart the server if required
+   - Connect and run: `CREATE EXTENSION IF NOT EXISTS vector;`
+
+2. **Configure Entra ID user in PostgreSQL:**
+   ```sql
+   -- Connect as an admin user
+   -- Grant access to your Entra ID user/group
+   -- The username typically matches your Azure AD email or service principal name
+   ```
+
+3. **Set environment variables:**
+   ```env
+   # Enable Entra ID authentication
+   USE_ENTRA_AUTH=true
+
+   # Connection string (username/password will be ignored)
+   AZURE_POSTGRESQL_DSN=postgresql://your-server.postgres.database.azure.com:5432/your_db?sslmode=require
+
+   # Optional: Override the username if needed
+   AZURE_PG_USERNAME_OVERRIDE="your-entra-user@yourdomain.com"
+   ```
+
+4. **Authentication Methods:**
+   - **Azure CLI**: Run `az login` before starting the application
+   - **Managed Identity**: Configure in Azure Container Apps, AKS, or VM
+   - **Service Principal**: Set `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`
+   - **Other methods**: Any authentication supported by [DefaultAzureCredential](https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.defaultazurecredential)
+
+**How it works:**
+- When `USE_ENTRA_AUTH=true`, the application uses `DefaultAzureCredential` to obtain access tokens
+- Tokens are automatically refreshed and used as the password for PostgreSQL connections
+- The connection string's username/password are replaced with Entra ID credentials
+
+**Benefits:**
+- No password management or rotation needed
+- Integrated with Azure RBAC and identity governance
+- Supports managed identities for passwordless deployment
+- Enhanced audit logging through Azure AD
 
 ### Dev notes:
 
